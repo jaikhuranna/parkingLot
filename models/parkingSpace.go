@@ -27,7 +27,6 @@ func (ps *ParkingSpace) Park(car *Car) bool {
     return true
 }
 
-// NEW: Add unpark functionality
 func (ps *ParkingSpace) Unpark() *Car {
     if !ps.IsOccupied {
         return nil
