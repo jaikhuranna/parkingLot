@@ -2,6 +2,7 @@ package services
 
 import (
     "parking-lot-system/models"
+    "parking-lot-system/interfaces"
     "errors"
 )
 
@@ -17,6 +18,24 @@ func NewParkingService() *ParkingService {
 
 func (ps *ParkingService) AddLot(lot *models.ParkingLot) {
     ps.lots = append(ps.lots, lot)
+}
+
+func (ps *ParkingService) AddObserverToLot(lotID string, observer interfaces.ParkingLotObserver) error {
+    lot := ps.findLotByID(lotID)
+    if lot == nil {
+        return errors.New("lot not found")
+    }
+    lot.AddObserver(observer)
+    return nil
+}
+
+func (ps *ParkingService) RemoveObserverFromLot(lotID string, observer interfaces.ParkingLotObserver) error {
+    lot := ps.findLotByID(lotID)
+    if lot == nil {
+        return errors.New("lot not found")
+    }
+    lot.RemoveObserver(observer)
+    return nil
 }
 
 func (ps *ParkingService) ParkCar(car *models.Car) error {
@@ -59,5 +78,31 @@ func (ps *ParkingService) FindCar(licensePlate string) (*models.ParkingSpace, er
     }
     
     return nil, errors.New("car not found")
+}
+
+func (ps *ParkingService) GetLotStatus(lotID string) (*models.ParkingLot, error) {
+    lot := ps.findLotByID(lotID)
+    if lot == nil {
+        return nil, errors.New("lot not found")
+    }
+    return lot, nil
+}
+
+func (ps *ParkingService) IsAnyLotFull() bool {
+    for _, lot := range ps.lots {
+        if lot.IsFull() {
+            return true
+        }
+    }
+    return false
+}
+
+func (ps *ParkingService) findLotByID(lotID string) *models.ParkingLot {
+    for _, lot := range ps.lots {
+        if lot.ID == lotID {
+            return lot
+        }
+    }
+    return nil
 }
 
