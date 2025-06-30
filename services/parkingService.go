@@ -33,3 +33,31 @@ func (ps *ParkingService) ParkCar(car *models.Car) error {
     return errors.New("no available parking space")
 }
 
+func (ps *ParkingService) UnparkCar(licensePlate string) (*models.Car, error) {
+    if licensePlate == "" {
+        return nil, errors.New("license plate cannot be empty")
+    }
+    
+    for _, lot := range ps.lots {
+        if car, err := lot.UnparkCar(licensePlate); err == nil {
+            return car, nil
+        }
+    }
+    
+    return nil, errors.New("car not found in any parking lot")
+}
+
+func (ps *ParkingService) FindCar(licensePlate string) (*models.ParkingSpace, error) {
+    if licensePlate == "" {
+        return nil, errors.New("license plate cannot be empty")
+    }
+    
+    for _, lot := range ps.lots {
+        if space := lot.FindCar(licensePlate); space != nil {
+            return space, nil
+        }
+    }
+    
+    return nil, errors.New("car not found")
+}
+

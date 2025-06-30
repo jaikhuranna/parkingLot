@@ -22,7 +22,6 @@ func NewParkingLot(id string, capacity int) *ParkingLot {
     return lot
 }
 
-// This should work now since Car is in the same package
 func (pl *ParkingLot) ParkCar(car *Car) error {
     for _, space := range pl.Spaces {
         if space.Park(car) {
@@ -30,5 +29,25 @@ func (pl *ParkingLot) ParkCar(car *Car) error {
         }
     }
     return errors.New("parking lot is full")
+}
+
+func (pl *ParkingLot) UnparkCar(licensePlate string) (*Car, error) {
+    for _, space := range pl.Spaces {
+        if space.IsOccupied && space.ParkedCar != nil && 
+           space.ParkedCar.LicensePlate == licensePlate {
+            return space.Unpark(), nil
+        }
+    }
+    return nil, errors.New("car not found in parking lot")
+}
+
+func (pl *ParkingLot) FindCar(licensePlate string) *ParkingSpace {
+    for _, space := range pl.Spaces {
+        if space.IsOccupied && space.ParkedCar != nil && 
+           space.ParkedCar.LicensePlate == licensePlate {
+            return space
+        }
+    }
+    return nil
 }
 

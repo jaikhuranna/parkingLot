@@ -1,9 +1,12 @@
 package models
 
+import "time"
+
 type ParkingSpace struct {
     ID         int
     IsOccupied bool
     ParkedCar  *Car
+    ParkedAt   time.Time
 }
 
 func NewParkingSpace(id int) *ParkingSpace {
@@ -20,6 +23,25 @@ func (ps *ParkingSpace) Park(car *Car) bool {
     }
     ps.IsOccupied = true
     ps.ParkedCar = car
+    ps.ParkedAt = time.Now()
     return true
+}
+
+// NEW: Add unpark functionality
+func (ps *ParkingSpace) Unpark() *Car {
+    if !ps.IsOccupied {
+        return nil
+    }
+    
+    car := ps.ParkedCar
+    ps.IsOccupied = false
+    ps.ParkedCar = nil
+    ps.ParkedAt = time.Time{}
+    
+    return car
+}
+
+func (ps *ParkingSpace) GetParkedCar() *Car {
+    return ps.ParkedCar
 }
 
