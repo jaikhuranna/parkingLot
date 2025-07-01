@@ -101,6 +101,16 @@ func (pl *ParkingLot) GetAvailableSpaces() int {
 	return count
 }
 
+func (pl *ParkingLot) FindAvailableSpace() *ParkingSpace {
+	for _, space := range pl.Spaces {
+		if !space.IsOccupied {
+			return space
+		}
+	}
+	return nil
+}
+
+
 func (pl *ParkingLot) GetOccupiedSpaces() int {
 	return pl.Capacity - pl.GetAvailableSpaces()
 }
