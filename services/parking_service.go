@@ -256,98 +256,98 @@ func (ps *ParkingService) ProvideDirectionsToDriver(licensePlate string) (string
 
 // UC8: Billing and time tracking functionality
 type TicketManager struct {
-    tickets map[string]*models.ParkingTicket
+	tickets map[string]*models.ParkingTicket
 }
 
 func NewTicketManager() *TicketManager {
-    return &TicketManager{
-        tickets: make(map[string]*models.ParkingTicket),
-    }
+	return &TicketManager{
+		tickets: make(map[string]*models.ParkingTicket),
+	}
 }
 
 var globalTicketManager = NewTicketManager()
 
 func (ps *ParkingService) ParkCarWithTicket(car *models.Car) (*models.ParkingTicket, error) {
-    if car == nil {
-        return nil, errors.New("car cannot be nil")
-    }
-    
-    for _, lot := range ps.lots {
-        if !lot.IsFull() {
-            space := lot.FindAvailableSpace()
-            if space != nil {
-                err := lot.ParkCar(car)
-                if err != nil {
-                    continue
-                }
-                
-                // Create and store ticket - Convert space.ID to string
-                spaceIDStr := fmt.Sprintf("%d", space.ID)
-                ticket := models.NewParkingTicket(car.LicensePlate, lot.ID, spaceIDStr)
-                globalTicketManager.tickets[ticket.ID] = ticket
-                
-                return ticket, nil
-            }
-        }
-    }
-    
-    return nil, errors.New("no available parking space")
+	if car == nil {
+		return nil, errors.New("car cannot be nil")
+	}
+
+	for _, lot := range ps.lots {
+		if !lot.IsFull() {
+			space := lot.FindAvailableSpace()
+			if space != nil {
+				err := lot.ParkCar(car)
+				if err != nil {
+					continue
+				}
+
+				// Create and store ticket - Convert space.ID to string
+				spaceIDStr := fmt.Sprintf("%d", space.ID)
+				ticket := models.NewParkingTicket(car.LicensePlate, lot.ID, spaceIDStr)
+				globalTicketManager.tickets[ticket.ID] = ticket
+
+				return ticket, nil
+			}
+		}
+	}
+
+	return nil, errors.New("no available parking space")
 }
 
 func (ps *ParkingService) UnparkCarWithBilling(licensePlate string) (*models.Car, *Bill, error) {
-    if licensePlate == "" {
-        return nil, nil, errors.New("license plate cannot be empty")
-    }
-    
-    // Find and complete ticket
-    var ticket *models.ParkingTicket
-    for _, t := range globalTicketManager.tickets {
-        if t.LicensePlate == licensePlate && t.IsActive {
-            ticket = t
-            break
-        }
-    }
-    
-    if ticket == nil {
-        return nil, nil, errors.New("active ticket not found for car")
-    }
-    
-    // Unpark the car
-    car, err := ps.UnparkCar(licensePlate)
-    if err != nil {
-        return nil, nil, err
-    }
-    
-    // Complete ticket and generate bill
-    ticket.CompleteParking()
-    billingService := NewBillingService(10.0, 5.0) // $10/hour, $5 minimum
-    bill := billingService.GenerateBill(ticket)
-    
-    return car, bill, nil
+	if licensePlate == "" {
+		return nil, nil, errors.New("license plate cannot be empty")
+	}
+
+	// Find and complete ticket
+	var ticket *models.ParkingTicket
+	for _, t := range globalTicketManager.tickets {
+		if t.LicensePlate == licensePlate && t.IsActive {
+			ticket = t
+			break
+		}
+	}
+
+	if ticket == nil {
+		return nil, nil, errors.New("active ticket not found for car")
+	}
+
+	// Unpark the car
+	car, err := ps.UnparkCar(licensePlate)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Complete ticket and generate bill
+	ticket.CompleteParking()
+	billingService := NewBillingService(10.0, 5.0) // $10/hour, $5 minimum
+	bill := billingService.GenerateBill(ticket)
+
+	return car, bill, nil
 }
 
 func (ps *ParkingService) GetParkingHistory(licensePlate string) ([]*models.ParkingTicket, error) {
-    var history []*models.ParkingTicket
-    
-    for _, ticket := range globalTicketManager.tickets {
-        if ticket.LicensePlate == licensePlate {
-            history = append(history, ticket)
-        }
-    }
-    
-    if len(history) == 0 {
-        return nil, errors.New("no parking history found for this vehicle")
-    }
-    
-    return history, nil
+	var history []*models.ParkingTicket
+
+	for _, ticket := range globalTicketManager.tickets {
+		if ticket.LicensePlate == licensePlate {
+			history = append(history, ticket)
+		}
+	}
+
+	if len(history) == 0 {
+		return nil, errors.New("no parking history found for this vehicle")
+	}
+
+	return history, nil
 }
 
 func (ps *ParkingService) GetActiveTicket(licensePlate string) (*models.ParkingTicket, error) {
-    for _, ticket := range globalTicketManager.tickets {
-        if ticket.LicensePlate == licensePlate && ticket.IsActive {
-            return ticket, nil
-        }
-    }
-    
-    return nil, errors.New("no active ticket found for this vehicle")
+	for _, ticket := range globalTicketManager.tickets {
+		if ticket.LicensePlate == licensePlate && ticket.IsActive {
+			return ticket, nil
+		}
+	}
+
+	return nil, errors.New("no active ticket found for this vehicle")
 }
