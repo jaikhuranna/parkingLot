@@ -43,3 +43,10 @@ func (ps *ParkingSpace) Unpark() *Car {
 func (ps *ParkingSpace) GetParkedCar() *Car {
 	return ps.ParkedCar
 }
+
+func (ps *ParkingSpace) GetLocationDetails() map[string]interface{} {
+    return map[string]interface{}{
+        "SpaceID":   ps.ID,
+        "ParkedAt":  ps.ParkedAt,
+    }
+}

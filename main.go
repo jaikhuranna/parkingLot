@@ -1,66 +1,76 @@
 package main
 
 import (
-	"fmt"
-	"parking-lot-system/interfaces"
-	"parking-lot-system/models"
-	"parking-lot-system/services"
+    "fmt"
+    "parking-lot-system/models"
+    "parking-lot-system/services"
+    "parking-lot-system/interfaces"
 )
 
 func main() {
-	fmt.Println("Welcome to Parking Lot System!")
-	fmt.Println("UC5: Space Available Notification Demo")
-	fmt.Println("=====================================")
-
-	// Create parking lot with small capacity for demo
-	lot := models.NewParkingLot("LOT1", 2)
-	service := services.NewParkingService()
-	service.AddLot(lot)
-
-	// Create security staff
-	securityStaff := models.NewSecurityStaff("SEC001", "Officer Johnson", "Traffic Control")
-	service.AddSecurityStaff(securityStaff)
-	service.AssignSecurityToLot("SEC001", "LOT1")
-
-	// Add observers
-	owner := interfaces.NewOwnerObserver("Sanjay")
-	security := interfaces.NewSecurityObserver("Officer Johnson", "SEC001")
-
-	service.AddObserverToLot("LOT1", owner)
-	service.AddObserverToLot("LOT1", security)
-
-	fmt.Printf("Initial lot status: %d/%d spaces available\n",
-		lot.GetAvailableSpaces(), lot.Capacity)
-
-	// Fill the lot completely
-	car1 := models.NewCar("ABC123", "John Doe")
-	car2 := models.NewCar("XYZ789", "Jane Smith")
-
-	service.ParkCar(car1)
-	fmt.Printf("✅ Car %s parked. Available spaces: %d/%d\n",
-		car1.LicensePlate, lot.GetAvailableSpaces(), lot.Capacity)
-
-	service.ParkCar(car2)
-	fmt.Printf("✅ Car %s parked. Available spaces: %d/%d\n",
-		car2.LicensePlate, lot.GetAvailableSpaces(), lot.Capacity)
-
-	// Demonstrate UC5: Space becomes available
-	fmt.Println("\n🎯 UC5 Demo: Unparking car to make space available...")
-	unparkedCar, err := service.UnparkCar("ABC123")
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
-
-	fmt.Printf("✅ Car %s unparked. Available spaces: %d/%d\n",
-		unparkedCar.LicensePlate, lot.GetAvailableSpaces(), lot.Capacity)
-
-	// Show that new cars can now park
-	car3 := models.NewCar("DEF456", "Bob Johnson")
-	err = service.ParkCar(car3)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	} else {
-		fmt.Printf("✅ New car %s successfully parked in available space!\n", car3.LicensePlate)
-	}
+    fmt.Println("Welcome to Parking Lot System!")
+    fmt.Println("UC7: Car Finding System Demo")
+    fmt.Println("============================")
+    
+    // Create parking lot
+    lot := models.NewParkingLot("LOT1", 5)
+    service := services.NewParkingService()
+    service.AddLot(lot)
+    
+    // Add observers
+    owner := interfaces.NewOwnerObserver("Sanjay")
+    service.AddObserverToLot("LOT1", owner)
+    
+    // Park some cars
+    cars := []*models.Car{
+        models.NewCar("ABC123", "John Doe"),
+        models.NewCar("XYZ789", "Jane Smith"),
+        models.NewCar("DEF456", "Bob Johnson"),
+    }
+    
+    for _, car := range cars {
+        ticket, err := service.ParkCar(car)
+        if err != nil {
+            fmt.Printf("Error parking %s: %v\n", car.LicensePlate, err)
+            continue
+        }
+        fmt.Printf("✅ Car %s parked successfully\n", car.LicensePlate)
+    }
+    
+    fmt.Println("\n🎯 UC7 Demo: Finding parked cars...")
+    
+    // Demonstrate car finding
+    for _, car := range cars {
+        fmt.Printf("\n🔍 Finding car %s:\n", car.LicensePlate)
+        
+        // Basic car finding
+        space, err := service.FindCar(car.LicensePlate)
+        if err != nil {
+            fmt.Printf("❌ Error: %v\n", err)
+            continue
+        }
+        
+        fmt.Printf("   Found in space: %s\n", space.ID)
+        
+        // Detailed location finding
+        location, err := service.FindCarWithLocation(car.LicensePlate)
+        if err != nil {
+            fmt.Printf("❌ Error getting location: %v\n", err)
+            continue
+        }
+        
+        info := location.GetLocationInfo()
+        fmt.Printf("   Detailed info: Lot %v, Space %v, Row %v, Position %v\n", 
+                   info["LotID"], info["SpaceID"], info["Row"], info["Position"])
+        
+        // Provide directions
+        directions, err := service.ProvideDirectionsToDriver(car.LicensePlate)
+        if err != nil {
+            fmt.Printf("❌ Error getting directions: %v\n", err)
+            continue
+        }
+        
+        fmt.Println("   Directions:")
+        fmt.Println("  ", directions)
+    }
 }
