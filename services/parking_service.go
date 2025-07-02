@@ -2,8 +2,8 @@ package services
 
 import (
 	"errors"
-	"parking-lot-system/interfaces"
 	"fmt"
+	"parking-lot-system/interfaces"
 	"parking-lot-system/models"
 )
 
@@ -190,67 +190,66 @@ func (ps *ParkingService) findLotByID(lotID string) *models.ParkingLot {
 	}
 	return nil
 }
+
 // UC7: Enhanced car finding functionality
 
 // UC7: Enhanced car finding functionality
 func (ps *ParkingService) FindCarWithLocation(licensePlate string) (*models.CarLocation, error) {
-    if licensePlate == "" {
-        return nil, errors.New("license plate cannot be empty")
-    }
-    
-    for _, lot := range ps.lots {
-        if space := lot.FindCar(licensePlate); space != nil {
-            // Convert space.ID from int to string
-            spaceIDStr := fmt.Sprintf("%d", space.ID)
-            
-            // Extract row and position from space ID if available
-            row := ""
-            position := 0
-            if len(spaceIDStr) > 0 {
-                row = string(spaceIDStr[0]) // First character as row
-                if len(spaceIDStr) > 1 {
-                    // Try to parse position from remaining characters
-                    if pos := spaceIDStr[1:]; len(pos) > 0 {
-                        position = int(pos[0] - '0')
-                    }
-                }
-            }
-            
-            return models.NewCarLocation(
-                space.ParkedCar,
-                lot.ID,
-                spaceIDStr, // Now correctly passing string
-                row,
-                position,
-                "", // Attendant ID - could be enhanced later
-            ), nil
-        }
-    }
-    
-    return nil, errors.New("car not found")
-}
+	if licensePlate == "" {
+		return nil, errors.New("license plate cannot be empty")
+	}
 
+	for _, lot := range ps.lots {
+		if space := lot.FindCar(licensePlate); space != nil {
+			// Convert space.ID from int to string
+			spaceIDStr := fmt.Sprintf("%d", space.ID)
+
+			// Extract row and position from space ID if available
+			row := ""
+			position := 0
+			if len(spaceIDStr) > 0 {
+				row = string(spaceIDStr[0]) // First character as row
+				if len(spaceIDStr) > 1 {
+					// Try to parse position from remaining characters
+					if pos := spaceIDStr[1:]; len(pos) > 0 {
+						position = int(pos[0] - '0')
+					}
+				}
+			}
+
+			return models.NewCarLocation(
+				space.ParkedCar,
+				lot.ID,
+				spaceIDStr, // Now correctly passing string
+				row,
+				position,
+				"", // Attendant ID - could be enhanced later
+			), nil
+		}
+	}
+
+	return nil, errors.New("car not found")
+}
 
 func (ps *ParkingService) ProvideDirectionsToDriver(licensePlate string) (string, error) {
-    location, err := ps.FindCarWithLocation(licensePlate)
-    if err != nil {
-        return "", err
-    }
-    
-    directions := fmt.Sprintf(
-        "🗺️  Your car %s is located in:\n"+
-        "   📍 Lot: %s\n"+
-        "   🅿️  Space: %s\n"+
-        "   📝 Row: %s, Position: %d\n"+
-        "   ⏰ Parked at: %s",
-        licensePlate,
-        location.LotID,
-        location.SpaceID,
-        location.Row,
-        location.Position,
-        location.ParkedAt.Format("2006-01-02 15:04:05"),
-    )
-    
-    return directions, nil
-}
+	location, err := ps.FindCarWithLocation(licensePlate)
+	if err != nil {
+		return "", err
+	}
 
+	directions := fmt.Sprintf(
+		"🗺️  Your car %s is located in:\n"+
+			"   📍 Lot: %s\n"+
+			"   🅿️  Space: %s\n"+
+			"   📝 Row: %s, Position: %d\n"+
+			"   ⏰ Parked at: %s",
+		licensePlate,
+		location.LotID,
+		location.SpaceID,
+		location.Row,
+		location.Position,
+		location.ParkedAt.Format("2006-01-02 15:04:05"),
+	)
+
+	return directions, nil
+}
