@@ -65,3 +65,39 @@ func (pa *ParkingAttendant) MakeParkingDecision(lots []*ParkingLot, car *Car) (*
 
 	return nil, errors.New("no available parking spaces")
 }
+
+// Enhanced parking decision with strategy support
+func (pa *ParkingAttendant) MakeParkingDecisionWithStrategy(lots []*ParkingLot, car *Car, strategy ParkingStrategy) (*ParkingDecision, error) {
+    if !pa.IsActive {
+        return nil, errors.New("attendant is not active")
+    }
+    
+    if strategy == nil {
+        // Fall back to original decision logic
+        return pa.MakeParkingDecision(lots, car)
+    }
+    
+    // Use the provided strategy to find the best lot
+    selectedLot, err := strategy.FindParkingLot(lots, car)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Find an available space in the selected lot
+    space := selectedLot.FindAvailableSpace()
+    if space == nil {
+        return nil, errors.New("no available space in selected lot")
+    }
+    
+    return &ParkingDecision{
+        AttendantID: pa.ID,
+        LotID:       selectedLot.ID,
+        SpaceID:     fmt.Sprintf("%d", space.ID),
+        Reason:      fmt.Sprintf("Strategy: %s", strategy.GetStrategyName()),
+    }, nil
+}
+
+func (pa *ParkingAttendant) SetStrategy(strategy ParkingStrategy) {
+    // This could be expanded to store strategy in attendant
+    // For now, strategy is passed per decision
+}
