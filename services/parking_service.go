@@ -8,18 +8,18 @@ import (
 )
 
 type ParkingService struct {
-	lots          []*models.ParkingLot
-	securityStaff []*models.SecurityStaff
-	attendants    []*models.ParkingAttendant
-    defaultStrategy models.ParkingStrategy
+	lots            []*models.ParkingLot
+	securityStaff   []*models.SecurityStaff
+	attendants      []*models.ParkingAttendant
+	defaultStrategy models.ParkingStrategy
 }
 
 func NewParkingService() *ParkingService {
 	return &ParkingService{
-		lots:          make([]*models.ParkingLot, 0),
-		securityStaff: make([]*models.SecurityStaff, 0),
-		attendants:    make([]*models.ParkingAttendant, 0),
-        defaultStrategy: models.NewEvenDistributionStrategy(),
+		lots:            make([]*models.ParkingLot, 0),
+		securityStaff:   make([]*models.SecurityStaff, 0),
+		attendants:      make([]*models.ParkingAttendant, 0),
+		defaultStrategy: models.NewEvenDistributionStrategy(),
 	}
 }
 
@@ -259,152 +259,148 @@ func (ps *ParkingService) ProvideDirectionsToDriver(licensePlate string) (string
 
 // UC8: Billing and time tracking functionality
 type TicketManager struct {
-    tickets map[string]*models.ParkingTicket
+	tickets map[string]*models.ParkingTicket
 }
 
 func NewTicketManager() *TicketManager {
-    return &TicketManager{
-        tickets: make(map[string]*models.ParkingTicket),
-    }
+	return &TicketManager{
+		tickets: make(map[string]*models.ParkingTicket),
+	}
 }
 
 var globalTicketManager = NewTicketManager()
 
-
 func (ps *ParkingService) ParkCarWithTicket(car *models.Car) (*models.ParkingTicket, error) {
-    if car == nil {
-        return nil, errors.New("car cannot be nil")
-    }
-    
-    for _, lot := range ps.lots {
-        if !lot.IsFull() {
-            space := lot.FindAvailableSpace()
-            if space != nil {
-                err := lot.ParkCar(car)
-                if err != nil {
-                    continue
-                }
-                
-                // Create and store ticket - Convert space.ID to string
-                spaceIDStr := fmt.Sprintf("%d", space.ID)
-                ticket := models.NewParkingTicket(car.LicensePlate, lot.ID, spaceIDStr)
-                globalTicketManager.tickets[ticket.ID] = ticket
-                
-                return ticket, nil
-            }
-        }
-    }
-    
-    return nil, errors.New("no available parking space")
-}
+	if car == nil {
+		return nil, errors.New("car cannot be nil")
+	}
 
+	for _, lot := range ps.lots {
+		if !lot.IsFull() {
+			space := lot.FindAvailableSpace()
+			if space != nil {
+				err := lot.ParkCar(car)
+				if err != nil {
+					continue
+				}
+
+				// Create and store ticket - Convert space.ID to string
+				spaceIDStr := fmt.Sprintf("%d", space.ID)
+				ticket := models.NewParkingTicket(car.LicensePlate, lot.ID, spaceIDStr)
+				globalTicketManager.tickets[ticket.ID] = ticket
+
+				return ticket, nil
+			}
+		}
+	}
+
+	return nil, errors.New("no available parking space")
+}
 
 func (ps *ParkingService) UnparkCarWithBilling(licensePlate string) (*models.Car, *Bill, error) {
-    if licensePlate == "" {
-        return nil, nil, errors.New("license plate cannot be empty")
-    }
-    
-    // Find and complete ticket
-    var ticket *models.ParkingTicket
-    for _, t := range globalTicketManager.tickets {
-        if t.LicensePlate == licensePlate && t.IsActive {
-            ticket = t
-            break
-        }
-    }
-    
-    if ticket == nil {
-        return nil, nil, errors.New("active ticket not found for car")
-    }
-    
-    // Unpark the car
-    car, err := ps.UnparkCar(licensePlate)
-    if err != nil {
-        return nil, nil, err
-    }
-    
-    // Complete ticket and generate bill
-    ticket.CompleteParking()
-    billingService := NewBillingService(10.0, 5.0) // $10/hour, $5 minimum
-    bill := billingService.GenerateBill(ticket)
-    
-    return car, bill, nil
+	if licensePlate == "" {
+		return nil, nil, errors.New("license plate cannot be empty")
+	}
+
+	// Find and complete ticket
+	var ticket *models.ParkingTicket
+	for _, t := range globalTicketManager.tickets {
+		if t.LicensePlate == licensePlate && t.IsActive {
+			ticket = t
+			break
+		}
+	}
+
+	if ticket == nil {
+		return nil, nil, errors.New("active ticket not found for car")
+	}
+
+	// Unpark the car
+	car, err := ps.UnparkCar(licensePlate)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Complete ticket and generate bill
+	ticket.CompleteParking()
+	billingService := NewBillingService(10.0, 5.0) // $10/hour, $5 minimum
+	bill := billingService.GenerateBill(ticket)
+
+	return car, bill, nil
 }
 func (ps *ParkingService) GetParkingHistory(licensePlate string) ([]*models.ParkingTicket, error) {
-    var history []*models.ParkingTicket
-    
-    for _, ticket := range globalTicketManager.tickets {
-        if ticket.LicensePlate == licensePlate {
-            history = append(history, ticket)
-        }
-    }
-    
-    if len(history) == 0 {
-        return nil, errors.New("no parking history found for this vehicle")
-    }
-    
-    return history, nil
-}
+	var history []*models.ParkingTicket
 
+	for _, ticket := range globalTicketManager.tickets {
+		if ticket.LicensePlate == licensePlate {
+			history = append(history, ticket)
+		}
+	}
+
+	if len(history) == 0 {
+		return nil, errors.New("no parking history found for this vehicle")
+	}
+
+	return history, nil
+}
 
 func (ps *ParkingService) GetActiveTicket(licensePlate string) (*models.ParkingTicket, error) {
-    for _, ticket := range globalTicketManager.tickets {
-        if ticket.LicensePlate == licensePlate && ticket.IsActive {
-            return ticket, nil
-        }
-    }
-    
-    return nil, errors.New("no active ticket found for this vehicle")
-}
+	for _, ticket := range globalTicketManager.tickets {
+		if ticket.LicensePlate == licensePlate && ticket.IsActive {
+			return ticket, nil
+		}
+	}
 
+	return nil, errors.New("no active ticket found for this vehicle")
+}
 
 // UC9: Even distribution parking strategy
 func (ps *ParkingService) SetDefaultStrategy(strategy models.ParkingStrategy) {
-    ps.defaultStrategy = strategy
+	ps.defaultStrategy = strategy
 }
 
 func (ps *ParkingService) ParkCarWithStrategy(car *models.Car, attendantID string, strategy models.ParkingStrategy) (*models.ParkingDecision, error) {
-    if car == nil {
-        return nil, errors.New("car cannot be nil")
-    }
-    
-    attendant := ps.FindAttendantByID(attendantID)
-    if attendant == nil {
-        return nil, errors.New("attendant not found")
-    }
-    
-    // Use strategy-based decision making
-    decision, err := attendant.MakeParkingDecisionWithStrategy(ps.lots, car, strategy)
-    if err != nil {
-        return nil, err
-    }
-    
-    // Execute the parking decision
-    lot := ps.findLotByID(decision.LotID)
-    if lot == nil {
-        return nil, errors.New("lot specified in decision not found")
-    }
-    
-    err = lot.ParkCar(car)
-    if err != nil {
-        return nil, err
-    }
-    
-    return decision, nil
+	if car == nil {
+		return nil, errors.New("car cannot be nil")
+	}
+
+	attendant := ps.FindAttendantByID(attendantID)
+	if attendant == nil {
+		return nil, errors.New("attendant not found")
+	}
+
+	// Use strategy-based decision making
+	decision, err := attendant.MakeParkingDecisionWithStrategy(ps.lots, car, strategy)
+	if err != nil {
+		return nil, err
+	}
+
+	// Execute the parking decision
+	lot := ps.findLotByID(decision.LotID)
+	if lot == nil {
+		return nil, errors.New("lot specified in decision not found")
+	}
+
+	err = lot.ParkCar(car)
+	if err != nil {
+		return nil, err
+	}
+
+	return decision, nil
 }
 
 func (ps *ParkingService) GetLotUtilization() []*models.LotUtilization {
-    var utilizations []*models.LotUtilization
-    
-    for _, lot := range ps.lots {
-        utilization := models.CalculateLotUtilization(lot)
-        utilizations = append(utilizations, utilization)
-    }
-    
-    return utilizations
+	var utilizations []*models.LotUtilization
+
+	for _, lot := range ps.lots {
+		utilization := models.CalculateLotUtilization(lot)
+		utilizations = append(utilizations, utilization)
+	}
+
+	return utilizations
 }
 
 func (ps *ParkingService) ParkCarEvenDistribution(car *models.Car, attendantID string) (*models.ParkingDecision, error) {
-    strategy := models.NewEvenDistributionStrategy()
-    return ps.ParkCarWithStrategy(car, attendantID, strategy)
+	strategy := models.NewEvenDistributionStrategy()
+	return ps.ParkCarWithStrategy(car, attendantID, strategy)
 }
