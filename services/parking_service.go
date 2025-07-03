@@ -407,95 +407,95 @@ func (ps *ParkingService) ParkCarEvenDistribution(car *models.Car, attendantID s
 
 // UC10-UC11: Advanced parking strategies
 func (ps *ParkingService) ParkHandicapCar(car *models.Car, attendantID string) (*models.ParkingDecision, error) {
-    if !car.IsHandicap {
-        return nil, errors.New("car is not registered as handicap vehicle")
-    }
-    
-    strategy := models.NewHandicapPriorityStrategy()
-    return ps.ParkCarWithStrategy(car, attendantID, strategy)
+	if !car.IsHandicap {
+		return nil, errors.New("car is not registered as handicap vehicle")
+	}
+
+	strategy := models.NewHandicapPriorityStrategy()
+	return ps.ParkCarWithStrategy(car, attendantID, strategy)
 }
 
 func (ps *ParkingService) ParkLargeVehicle(car *models.Car, attendantID string) (*models.ParkingDecision, error) {
-    if car.Size != models.LargeVehicle {
-        return nil, errors.New("car is not classified as large vehicle")
-    }
-    
-    strategy := models.NewLargeVehicleStrategy()
-    return ps.ParkCarWithStrategy(car, attendantID, strategy)
+	if car.Size != models.LargeVehicle {
+		return nil, errors.New("car is not classified as large vehicle")
+	}
+
+	strategy := models.NewLargeVehicleStrategy()
+	return ps.ParkCarWithStrategy(car, attendantID, strategy)
 }
 
 func (ps *ParkingService) ParkCarSmart(car *models.Car, attendantID string) (*models.ParkingDecision, error) {
-    strategy := models.NewSmartParkingStrategy()
-    return ps.ParkCarWithStrategy(car, attendantID, strategy)
+	strategy := models.NewSmartParkingStrategy()
+	return ps.ParkCarWithStrategy(car, attendantID, strategy)
 }
 
 func (ps *ParkingService) GetHandicapSpacesCount() map[string]int {
-    handicapCounts := make(map[string]int)
-    
-    for _, lot := range ps.lots {
-        count := 0
-        for _, space := range lot.Spaces {
-            if space.IsOccupied && space.ParkedCar != nil && space.ParkedCar.IsHandicap {
-                count++
-            }
-        }
-        handicapCounts[lot.ID] = count
-    }
-    
-    return handicapCounts
+	handicapCounts := make(map[string]int)
+
+	for _, lot := range ps.lots {
+		count := 0
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil && space.ParkedCar.IsHandicap {
+				count++
+			}
+		}
+		handicapCounts[lot.ID] = count
+	}
+
+	return handicapCounts
 }
 
 func (ps *ParkingService) GetLargeVehicleSpacesCount() map[string]int {
-    largeCounts := make(map[string]int)
-    
-    for _, lot := range ps.lots {
-        count := 0
-        for _, space := range lot.Spaces {
-            if space.IsOccupied && space.ParkedCar != nil && space.ParkedCar.Size == models.LargeVehicle {
-                count++
-            }
-        }
-        largeCounts[lot.ID] = count
-    }
-    
-    return largeCounts
+	largeCounts := make(map[string]int)
+
+	for _, lot := range ps.lots {
+		count := 0
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil && space.ParkedCar.Size == models.LargeVehicle {
+				count++
+			}
+		}
+		largeCounts[lot.ID] = count
+	}
+
+	return largeCounts
 }
 
 func (ps *ParkingService) GetDetailedLotAnalytics() map[string]map[string]interface{} {
-    analytics := make(map[string]map[string]interface{})
-    
-    for _, lot := range ps.lots {
-        util := models.CalculateLotUtilization(lot)
-        
-        handicapCount := 0
-        largeVehicleCount := 0
-        smallVehicleCount := 0
-        
-        for _, space := range lot.Spaces {
-            if space.IsOccupied && space.ParkedCar != nil {
-                if space.ParkedCar.IsHandicap {
-                    handicapCount++
-                }
-                
-                switch space.ParkedCar.Size {
-                case models.SmallVehicle:
-                    smallVehicleCount++
-                case models.LargeVehicle:
-                    largeVehicleCount++
-                }
-            }
-        }
-        
-        analytics[lot.ID] = map[string]interface{}{
-            "TotalSpaces":       util.TotalSpaces,
-            "OccupiedSpaces":    util.OccupiedSpaces,
-            "AvailableSpaces":   util.AvailableSpaces,
-            "UtilizationRate":   util.UtilizationRate,
-            "HandicapVehicles":  handicapCount,
-            "LargeVehicles":     largeVehicleCount,
-            "SmallVehicles":     smallVehicleCount,
-        }
-    }
-    
-    return analytics
+	analytics := make(map[string]map[string]interface{})
+
+	for _, lot := range ps.lots {
+		util := models.CalculateLotUtilization(lot)
+
+		handicapCount := 0
+		largeVehicleCount := 0
+		smallVehicleCount := 0
+
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil {
+				if space.ParkedCar.IsHandicap {
+					handicapCount++
+				}
+
+				switch space.ParkedCar.Size {
+				case models.SmallVehicle:
+					smallVehicleCount++
+				case models.LargeVehicle:
+					largeVehicleCount++
+				}
+			}
+		}
+
+		analytics[lot.ID] = map[string]interface{}{
+			"TotalSpaces":      util.TotalSpaces,
+			"OccupiedSpaces":   util.OccupiedSpaces,
+			"AvailableSpaces":  util.AvailableSpaces,
+			"UtilizationRate":  util.UtilizationRate,
+			"HandicapVehicles": handicapCount,
+			"LargeVehicles":    largeVehicleCount,
+			"SmallVehicles":    smallVehicleCount,
+		}
+	}
+
+	return analytics
 }
