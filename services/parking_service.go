@@ -499,3 +499,87 @@ func (ps *ParkingService) GetDetailedLotAnalytics() map[string]map[string]interf
 
 	return analytics
 }
+
+// UC11: Large vehicle management functionality
+func (ps *ParkingService) GetBestLotForLargeVehicle() (*models.ParkingLot, int, error) {
+	var bestLot *models.ParkingLot
+	maxSpaces := -1
+
+	for _, lot := range ps.lots {
+		if !lot.IsFull() {
+			available := lot.GetAvailableSpaces()
+			if available > maxSpaces {
+				maxSpaces = available
+				bestLot = lot
+			}
+		}
+	}
+
+	if bestLot == nil {
+		return nil, 0, errors.New("no lots available for large vehicles")
+	}
+
+	return bestLot, maxSpaces, nil
+}
+
+func (ps *ParkingService) GetLargeVehicleRecommendations() map[string]interface{} {
+	recommendations := make(map[string]interface{})
+
+	bestLot, maxSpaces, err := ps.GetBestLotForLargeVehicle()
+	if err != nil {
+		recommendations["error"] = err.Error()
+		return recommendations
+	}
+
+	analytics := ps.GetDetailedLotAnalytics()
+
+	recommendations["recommendedLot"] = bestLot.ID
+	recommendations["availableSpaces"] = maxSpaces
+
+	if lotAnalytics, exists := analytics[bestLot.ID]; exists {
+		recommendations["currentLargeVehicles"] = lotAnalytics["LargeVehicles"]
+		recommendations["utilizationRate"] = lotAnalytics["UtilizationRate"]
+	}
+
+	// Find alternative lots suitable for large vehicles
+	var alternatives []string
+	for _, lot := range ps.lots {
+		if lot.ID != bestLot.ID && !lot.IsFull() && lot.GetAvailableSpaces() >= 3 {
+			alternatives = append(alternatives, lot.ID)
+		}
+	}
+	recommendations["alternativeLots"] = alternatives
+
+	return recommendations
+}
+
+func (ps *ParkingService) ValidateLargeVehicleCapacity() map[string]bool {
+	validation := make(map[string]bool)
+
+	for _, lot := range ps.lots {
+		utilizationRate := float64(lot.GetOccupiedSpaces()) / float64(lot.Capacity) * 100
+		validation[lot.ID] = utilizationRate <= 70.0 // Suitable if 70% or less occupied
+	}
+
+	return validation
+}
+
+func (ps *ParkingService) GetOptimalLargeVehiclePlacement() map[string]interface{} {
+	placement := make(map[string]interface{})
+
+	bestLot, maxSpaces, err := ps.GetBestLotForLargeVehicle()
+	if err != nil {
+		placement["error"] = err.Error()
+		return placement
+	}
+
+	// Calculate maneuvering space efficiency
+	efficiency := float64(maxSpaces) / float64(bestLot.Capacity) * 100
+
+	placement["optimalLot"] = bestLot.ID
+	placement["availableSpaces"] = maxSpaces
+	placement["maneuveringEfficiency"] = efficiency
+	placement["recommendedForLargeVehicles"] = efficiency >= 30.0 // At least 30% free space
+
+	return placement
+}

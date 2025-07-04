@@ -126,3 +126,54 @@ func showDetailedAnalytics(service *services.ParkingService) {
 			data["HandicapVehicles"], data["LargeVehicles"], data["SmallVehicles"])
 	}
 }
+
+    // UC11 Large Vehicle Management Demo
+    fmt.Println("\n🚛 UC11 Large Vehicle Management:")
+    
+    // Test large vehicle strategy
+    testLargeCar := models.NewCar("LARGE_TEST", "Large Vehicle Test")
+    testLargeCar.SetVehicleSize(models.LargeVehicle)
+    
+    largeDecision, err := service.ParkLargeVehicle(testLargeCar, "ATT001")
+    if err == nil {
+        fmt.Printf("✅ Large vehicle parked in: %s\n", largeDecision.LotID)
+    } else {
+        fmt.Printf("❌ Large vehicle parking failed: %v\n", err)
+    }
+    
+    // Show recommendations
+    recommendations := service.GetLargeVehicleRecommendations()
+    if errMsg, hasError := recommendations["error"]; hasError {
+        fmt.Printf("❌ No recommendations: %v\n", errMsg)
+    } else {
+        fmt.Printf("📋 Best lot for large vehicles: %v\n", recommendations["recommendedLot"])
+        fmt.Printf("   Available spaces: %v\n", recommendations["availableSpaces"])
+        fmt.Printf("   Current large vehicles: %v\n", recommendations["currentLargeVehicles"])
+        fmt.Printf("   Utilization rate: %.1f%%\n", recommendations["utilizationRate"])
+        
+        if alternatives, ok := recommendations["alternativeLots"].([]string); ok && len(alternatives) > 0 {
+            fmt.Printf("   Alternative lots: %v\n", alternatives)
+        }
+    }
+    
+    // Show capacity validation
+    fmt.Println("\n🔍 Large Vehicle Capacity Validation:")
+    validation := service.ValidateLargeVehicleCapacity()
+    for lotID, suitable := range validation {
+        status := "❌ Over capacity"
+        if suitable {
+            status = "✅ Suitable"
+        }
+        fmt.Printf("   %s: %s\n", lotID, status)
+    }
+    
+    // Show optimal placement analysis
+    fmt.Println("\n📊 Optimal Large Vehicle Placement:")
+    placement := service.GetOptimalLargeVehiclePlacement()
+    if errMsg, hasError := placement["error"]; hasError {
+        fmt.Printf("❌ No placement analysis: %v\n", errMsg)
+    } else {
+        fmt.Printf("   Optimal lot: %v\n", placement["optimalLot"])
+        fmt.Printf("   Maneuvering efficiency: %.1f%%\n", placement["maneuveringEfficiency"])
+        fmt.Printf("   Recommended: %v\n", placement["recommendedForLargeVehicles"])
+    }
