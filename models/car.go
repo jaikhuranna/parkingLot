@@ -13,6 +13,8 @@ type Car struct {
 	DriverName   string
 	Size         VehicleSize
 	IsHandicap   bool
+	Color        string
+	Make         string
 }
 
 func NewCar(licensePlate, driverName string) *Car {
@@ -21,6 +23,8 @@ func NewCar(licensePlate, driverName string) *Car {
 		DriverName:   driverName,
 		Size:         MediumVehicle, // FIXED: Default to MediumVehicle (1), not SmallVehicle (0)
 		IsHandicap:   false,
+		Color:        "Unknown",
+		Make:         "Unknown",
 	}
 }
 
@@ -42,5 +46,24 @@ func (c *Car) GetVehicleSizeString() string {
 		return "Large"
 	default:
 		return "Medium" // FIXED: Default fallback to Medium
+	}
+}
+
+func (c *Car) SetColor(color string) {
+	c.Color = color
+}
+
+func (c *Car) SetMake(make string) {
+	c.Make = make
+}
+
+func (c *Car) GetCarDetails() map[string]interface{} {
+	return map[string]interface{}{
+		"LicensePlate": c.LicensePlate,
+		"DriverName":   c.DriverName,
+		"Color":        c.Color,
+		"Make":         c.Make,
+		"Size":         c.GetVehicleSizeString(),
+		"IsHandicap":   c.IsHandicap,
 	}
 }
