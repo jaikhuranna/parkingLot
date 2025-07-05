@@ -325,3 +325,97 @@ func showDetailedAnalytics(service *services.ParkingService) {
         report := policeService.GenerateInvestigationReport(whiteCars, "Bomb Threat Investigation")
         fmt.Print(report)
     }
+    // UC12-UC13 Police Investigation Demo
+    fmt.Println("\n🚔 UC12-UC13 Police Investigation Features:")
+    
+    // Create police service
+    policeService := services.NewPoliceService(service)
+    
+    // Add some test cars with colors and makes
+    testCars := []*models.Car{
+        func() *models.Car {
+            car := models.NewCar("WHITE001", "John Smith")
+            car.SetColor("White")
+            car.SetMake("Honda")
+            return car
+        }(),
+        func() *models.Car {
+            car := models.NewCar("BLUE_TOY", "Jane Doe")
+            car.SetColor("Blue")
+            car.SetMake("Toyota")
+            return car
+        }(),
+        func() *models.Car {
+            car := models.NewCar("WHITE002", "Bob Wilson")
+            car.SetColor("White")
+            car.SetMake("Ford")
+            return car
+        }(),
+    }
+    
+    // Park test cars
+    for _, car := range testCars {
+        err := service.ParkCar(car)
+        if err != nil {
+            fmt.Printf("Warning: Could not park %s: %v\n", car.LicensePlate, err)
+        }
+    }
+    
+    // UC12: Find white cars for bomb threat investigation
+    fmt.Println("\n🔍 UC12: Investigating bomb threat - Finding white cars...")
+    whiteCars, err := policeService.FindWhiteCars()
+    if err != nil {
+        fmt.Printf("❌ Error finding white cars: %v\n", err)
+    } else {
+        fmt.Printf("✅ Found %d white vehicles:\n", len(whiteCars))
+        for i, vehicle := range whiteCars {
+            fmt.Printf("   %d. %s (%s %s) - Lot: %s, Space: %s\n", 
+                      i+1, vehicle.Car.LicensePlate, vehicle.Car.Color, 
+                      vehicle.Car.Make, vehicle.LotID, vehicle.SpaceID)
+        }
+    }
+    
+    // UC13: Find blue Toyota cars for robbery investigation
+    fmt.Println("\n🔍 UC13: Investigating robbery - Finding blue Toyota cars...")
+    blueToyotas, err := policeService.FindBlueToyotaCars()
+    if err != nil {
+        fmt.Printf("❌ Error finding blue Toyotas: %v\n", err)
+    } else {
+        fmt.Printf("✅ Found %d blue Toyota vehicles:\n", len(blueToyotas))
+        for i, vehicle := range blueToyotas {
+            fmt.Printf("   %d. %s (Driver: %s) - Lot: %s, Space: %s\n", 
+                      i+1, vehicle.Car.LicensePlate, vehicle.Car.DriverName,
+                      vehicle.LotID, vehicle.SpaceID)
+            if vehicle.AttendantName != "" {
+                fmt.Printf("      Attendant: %s (ID: %s)\n", vehicle.AttendantName, vehicle.AttendantID)
+            }
+        }
+    }
+    
+    // Generate investigation reports
+    if len(whiteCars) > 0 {
+        fmt.Println("\n📋 White Cars Investigation Report:")
+        report := policeService.GenerateInvestigationReport(whiteCars, "Bomb Threat Investigation")
+        fmt.Print(report)
+    }
+    
+    // UC13: Enhanced robbery investigation with attendant details
+    fmt.Println("\n🚔 UC13: Blue Toyota Robbery Investigation")
+    
+    blueToyotaCount := policeService.GetBlueToyotaCount()
+    fmt.Printf("📊 Total blue Toyota vehicles found: %d\n", blueToyotaCount)
+    
+    if blueToyotaCount > 0 {
+        fmt.Println("\n📋 Generating comprehensive robbery investigation report...")
+        robberyReport := policeService.GenerateRobberyInvestigationReport("Armed suspect, approximately 5'10\", wearing dark clothing")
+        fmt.Print(robberyReport)
+        
+        fmt.Println("\n🔍 Evidence validation:")
+        evidence := policeService.ValidateRobberyEvidence()
+        fmt.Printf("   Case strength: %v\n", evidence["caseStrength"])
+        fmt.Printf("   Evidence quality: %v\n", evidence["evidenceQuality"])
+        fmt.Printf("   Attendant witnesses: %v\n", evidence["attendantWitnesses"])
+    } else {
+        fmt.Println("📋 No blue Toyota vehicles found for robbery investigation")
+        fmt.Println("   Recommendation: Expand search to nearby areas")
+    }
