@@ -283,3 +283,163 @@ func (ps *PoliceService) ValidateRobberyEvidence() map[string]interface{} {
 
 	return evidence
 }
+
+// UC14: Find all BMW cars for suspicious activity monitoring
+func (ps *PoliceService) FindBMWCars() ([]*VehicleInvestigationInfo, error) {
+	var bmwCars []*VehicleInvestigationInfo
+
+	for _, lot := range ps.parkingService.lots {
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil {
+				car := space.ParkedCar
+				if strings.ToLower(car.Make) == "bmw" {
+					info := &VehicleInvestigationInfo{
+						Car:      car,
+						LotID:    lot.ID,
+						SpaceID:  fmt.Sprintf("%d", space.ID),
+						ParkedAt: space.ParkedAt,
+					}
+
+					// Get attendant info if available
+					if ticket, err := ps.parkingService.GetActiveTicket(car.LicensePlate); err == nil {
+						info.AttendantID = ticket.AttendantID
+						if attendant := ps.parkingService.FindAttendantByID(ticket.AttendantID); attendant != nil {
+							info.AttendantName = attendant.Name
+						}
+					}
+
+					bmwCars = append(bmwCars, info)
+				}
+			}
+		}
+	}
+
+	return bmwCars, nil
+}
+
+// UC14: Generate BMW security monitoring report
+func (ps *PoliceService) GenerateBMWSecurityReport() string {
+	bmwCars, err := ps.FindBMWCars()
+	if err != nil {
+		return "Error generating BMW security report: " + err.Error()
+	}
+
+	report := "=== BMW SECURITY MONITORING REPORT ===\n"
+	report += "Alert Type: Suspicious Activity Monitoring\n"
+	report += "Target Vehicle: BMW (All Models)\n"
+	report += "Security Level: Enhanced\n"
+	report += "Generated: " + time.Now().Format("2006-01-02 15:04:05") + "\n"
+	report += fmt.Sprintf("BMW Vehicles Found: %d\n\n", len(bmwCars))
+
+	for i, vehicle := range bmwCars {
+		report += fmt.Sprintf("BMW VEHICLE %d:\n", i+1)
+		report += "  License Plate: " + vehicle.Car.LicensePlate + "\n"
+		report += "  Driver Name: " + vehicle.Car.DriverName + "\n"
+		report += "  Color: " + vehicle.Car.Color + "\n"
+		report += "  Location: Lot " + vehicle.LotID + ", Space " + vehicle.SpaceID + "\n"
+		report += "  Time Parked: " + vehicle.ParkedAt.Format("2006-01-02 15:04:05") + "\n"
+		report += "  Vehicle Size: " + vehicle.Car.GetVehicleSizeString() + "\n"
+
+		if vehicle.AttendantID != "" {
+			report += "  Parking Attendant: " + vehicle.AttendantName + " (ID: " + vehicle.AttendantID + ")\n"
+		}
+
+		if vehicle.Car.IsHandicap {
+			report += "  Special Status: Handicap Vehicle\n"
+		}
+
+		report += "  Security Priority: HIGH\n"
+		report += "\n"
+	}
+
+	if len(bmwCars) == 0 {
+		report += "NO BMW VEHICLES FOUND\n"
+		report += "Status: All Clear - No BMW vehicles in parking system\n"
+	} else {
+		report += "SECURITY RECOMMENDATIONS:\n"
+		report += "1. Increase patrol frequency around BMW vehicle locations\n"
+		report += "2. Monitor for unusual activity near these vehicles\n"
+		report += "3. Alert security staff to enhanced surveillance\n"
+		report += "4. Cross-reference with incident reports\n"
+		report += "5. Document all BMW vehicle movements\n"
+	}
+
+	return report
+}
+
+// UC14: Get BMW count for security dashboard
+func (ps *PoliceService) GetBMWCount() int {
+	bmwCars, err := ps.FindBMWCars()
+	if err != nil {
+		return 0
+	}
+	return len(bmwCars)
+}
+
+// UC14: Get BMW vehicles by security priority
+func (ps *PoliceService) GetBMWVehiclesByPriority() map[string]interface{} {
+	bmwCars, err := ps.FindBMWCars()
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	result := make(map[string]interface{})
+	result["totalBMWVehicles"] = len(bmwCars)
+	result["securityLevel"] = "HIGH"
+	result["requiresEnhancedSecurity"] = len(bmwCars) > 0
+
+	var highPriority, mediumPriority, lowPriority int
+	for _, vehicle := range bmwCars {
+		if vehicle.Car.IsHandicap || vehicle.Car.Size == models.LargeVehicle {
+			highPriority++
+		} else if vehicle.Car.Size == models.MediumVehicle {
+			mediumPriority++
+		} else {
+			lowPriority++
+		}
+	}
+
+	result["highPriority"] = highPriority
+	result["mediumPriority"] = mediumPriority
+	result["lowPriority"] = lowPriority
+
+	return result
+}
+
+// UC14: Validate BMW security protocols
+func (ps *PoliceService) ValidateBMWSecurityProtocols() map[string]interface{} {
+	validation := make(map[string]interface{})
+
+	bmwCars, err := ps.FindBMWCars()
+	if err != nil {
+		validation["error"] = err.Error()
+		return validation
+	}
+
+	validation["totalBMWVehicles"] = len(bmwCars)
+	validation["securityProtocolActive"] = len(bmwCars) > 0
+
+	var attendantCoverage int
+	for _, vehicle := range bmwCars {
+		if vehicle.AttendantID != "" {
+			attendantCoverage++
+		}
+	}
+
+	validation["attendantCoverage"] = attendantCoverage
+	validation["coverageQuality"] = func() string {
+		if len(bmwCars) == 0 {
+			return "Not Applicable"
+		}
+		coverage := float64(attendantCoverage) / float64(len(bmwCars)) * 100
+		if coverage == 100 {
+			return "Excellent - All BMW vehicles have attendant records"
+		} else if coverage >= 80 {
+			return "Good - Most BMW vehicles have attendant records"
+		} else {
+			return "Needs Improvement - Limited attendant coverage"
+		}
+	}()
+
+	return validation
+}

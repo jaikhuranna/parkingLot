@@ -9,13 +9,13 @@ import (
 
 func main() {
 	fmt.Println("Welcome to Parking Lot System!")
-	fmt.Println("UC10-UC11: Advanced Parking Strategies Demo")
-	fmt.Println("===========================================")
+	fmt.Println("UC14: BMW Car Tracking for Suspicious Activity")
+	fmt.Println("==============================================")
 
-	// Create multiple parking lots with different capacities
-	lot1 := models.NewParkingLot("LOT1", 4) // Smaller lot
-	lot2 := models.NewParkingLot("LOT2", 6) // Medium lot
-	lot3 := models.NewParkingLot("LOT3", 8) // Larger lot
+	// Create parking lots
+	lot1 := models.NewParkingLot("LOT1", 4)
+	lot2 := models.NewParkingLot("LOT2", 6)
+	lot3 := models.NewParkingLot("LOT3", 8)
 
 	service := services.NewParkingService()
 	service.AddLot(lot1)
@@ -32,84 +32,102 @@ func main() {
 	service.AddObserverToLot("LOT2", owner)
 	service.AddObserverToLot("LOT3", owner)
 
-	fmt.Println("\n📊 Initial Lot Status:")
-	showDetailedAnalytics(service)
+	// Create police service
+	policeService := services.NewPoliceService(service)
 
-	// Demo vehicles with different properties
-	vehicles := []*models.Car{
-		createVehicle("ABC123", "John Doe", models.MediumVehicle, false),       // Regular car
-		createVehicle("HANDICAP1", "Jane Smith", models.SmallVehicle, true),    // Handicap small car
-		createVehicle("LARGE001", "Bob Wilson", models.LargeVehicle, false),    // Large vehicle
-		createVehicle("HANDICAP2", "Alice Brown", models.LargeVehicle, true),   // Handicap large car
-		createVehicle("TRUCK001", "Charlie Davis", models.LargeVehicle, false), // Another large vehicle
-		createVehicle("SMALL001", "Diana Lee", models.SmallVehicle, false),     // Small regular car
+	// UC14: BMW Security Monitoring Demo
+	fmt.Println("\n🚗 UC14: BMW Security Monitoring Features")
+	
+	// Add some test BMW cars
+	bmwCars := []*models.Car{
+		func() *models.Car {
+			car := models.NewCar("BMW001", "Alice Johnson")
+			car.SetColor("Black")
+			car.SetMake("BMW")
+			car.SetVehicleSize(models.LargeVehicle)
+			return car
+		}(),
+		func() *models.Car {
+			car := models.NewCar("BMW_X5", "Bob Smith")
+			car.SetColor("White")
+			car.SetMake("BMW")
+			car.SetVehicleSize(models.LargeVehicle)
+			car.SetHandicapStatus(true)
+			return car
+		}(),
+		func() *models.Car {
+			car := models.NewCar("BMW_M3", "Charlie Brown")
+			car.SetColor("Blue")
+			car.SetMake("BMW")
+			car.SetVehicleSize(models.MediumVehicle)
+			return car
+		}(),
 	}
-
-	fmt.Println("\n🎯 UC10-UC11 Demo: Advanced Parking Strategies...")
-
-	for i, car := range vehicles {
-		fmt.Printf("\n%d. Parking %s (%s, %s%s):\n",
-			i+1, car.LicensePlate, car.DriverName,
-			car.GetVehicleSizeString(),
-			func() string {
-				if car.IsHandicap {
-					return ", Handicap"
-				} else {
-					return ""
-				}
-			}())
-
-		var decision *models.ParkingDecision
-		var err error
-
-		// Use smart parking strategy that handles both UC10 and UC11
-		decision, err = service.ParkCarSmart(car, "ATT001")
-
+	
+	// Park BMW cars
+	fmt.Println("\n📍 Parking BMW vehicles for security monitoring...")
+	for _, car := range bmwCars {
+		_, err := service.ParkCarWithTicket(car)
 		if err != nil {
-			fmt.Printf("   ❌ Error: %v\n", err)
-			continue
-		}
-
-		fmt.Printf("   ✅ Parked in %s (Space: %s)\n", decision.LotID, decision.SpaceID)
-		fmt.Printf("   📋 Strategy: %s\n", decision.Reason)
-
-		// Show current analytics
-		fmt.Printf("   📊 Current lot analytics:\n")
-		analytics := service.GetDetailedLotAnalytics()
-		for lotID, data := range analytics {
-			fmt.Printf("      %s: %d/%d spaces, H:%d L:%d S:%d (%.1f%% full)\n",
-				lotID,
-				data["OccupiedSpaces"], data["TotalSpaces"],
-				data["HandicapVehicles"], data["LargeVehicles"], data["SmallVehicles"],
-				data["UtilizationRate"])
+			fmt.Printf("Warning: Could not park %s: %v\n", car.LicensePlate, err)
+		} else {
+			fmt.Printf("✅ Parked BMW %s (%s %s)\n", car.LicensePlate, car.Color, car.Make)
 		}
 	}
-
-	fmt.Println("\n📈 Final Detailed Analytics:")
-	showDetailedAnalytics(service)
-
-	// Demonstrate specific strategy usage
-	fmt.Println("\n🔍 Testing Individual Strategies:")
-
-	// Test handicap priority
-	handicapCar := createVehicle("H_TEST", "Handicap Test", models.MediumVehicle, true)
-	decision, err := service.ParkHandicapCar(handicapCar, "ATT001")
-	if err == nil {
-		fmt.Printf("✅ Handicap priority: %s → %s\n", handicapCar.LicensePlate, decision.LotID)
+	
+	// UC14: Find BMW cars for security monitoring
+	fmt.Println("\n🔍 UC14: BMW Security Monitoring - Enhanced surveillance...")
+	bmwVehicles, err := policeService.FindBMWCars()
+	if err != nil {
+		fmt.Printf("❌ Error finding BMW vehicles: %v\n", err)
 	} else {
-		fmt.Printf("❌ Handicap priority failed: %v\n", err)
+		fmt.Printf("🚨 Found %d BMW vehicles requiring enhanced security:\n", len(bmwVehicles))
+		for i, vehicle := range bmwVehicles {
+			fmt.Printf("   %d. %s (%s %s) - Lot: %s, Space: %s\n", 
+				      i+1, vehicle.Car.LicensePlate, vehicle.Car.Color, 
+				      vehicle.Car.Make, vehicle.LotID, vehicle.SpaceID)
+			if vehicle.AttendantName != "" {
+				fmt.Printf("      👮 Attendant: %s (ID: %s)\n", vehicle.AttendantName, vehicle.AttendantID)
+			}
+			if vehicle.Car.IsHandicap {
+				fmt.Printf("      ♿ Special Status: Handicap Vehicle\n")
+			}
+		}
 	}
-
-	// Test large vehicle strategy
-	largeCar := createVehicle("L_TEST", "Large Test", models.LargeVehicle, false)
-	decision, err = service.ParkLargeVehicle(largeCar, "ATT001")
-	if err == nil {
-		fmt.Printf("✅ Large vehicle strategy: %s → %s\n", largeCar.LicensePlate, decision.LotID)
+	
+	// UC14: Generate BMW security monitoring report
+	fmt.Println("\n📋 UC14: BMW Security Monitoring Report:")
+	bmwReport := policeService.GenerateBMWSecurityReport()
+	fmt.Print(bmwReport)
+	
+	// UC14: Security analytics
+	fmt.Println("\n📊 UC14: BMW Security Analytics:")
+	bmwCount := policeService.GetBMWCount()
+	fmt.Printf("Total BMW vehicles: %d\n", bmwCount)
+	
+	priorities := policeService.GetBMWVehiclesByPriority()
+	if errMsg, hasError := priorities["error"]; hasError {
+		fmt.Printf("❌ Priority analysis error: %v\n", errMsg)
 	} else {
-		fmt.Printf("❌ Large vehicle strategy failed: %v\n", err)
+		fmt.Printf("Security Level: %v\n", priorities["securityLevel"])
+		fmt.Printf("Enhanced Security Required: %v\n", priorities["requiresEnhancedSecurity"])
+		fmt.Printf("High Priority BMW vehicles: %v\n", priorities["highPriority"])
+		fmt.Printf("Medium Priority BMW vehicles: %v\n", priorities["mediumPriority"])
+		fmt.Printf("Low Priority BMW vehicles: %v\n", priorities["lowPriority"])
+	}
+	
+	// UC14: Security protocol validation
+	fmt.Println("\n🔒 UC14: Security Protocol Validation:")
+	validation := policeService.ValidateBMWSecurityProtocols()
+	if errMsg, hasError := validation["error"]; hasError {
+		fmt.Printf("❌ Validation error: %v\n", errMsg)
+	} else {
+		fmt.Printf("Security Protocol Status: %v\n", validation["securityProtocolActive"])
+		fmt.Printf("Attendant Coverage: %v/%v BMW vehicles\n", 
+			  validation["attendantCoverage"], validation["totalBMWVehicles"])
+		fmt.Printf("Coverage Quality: %v\n", validation["coverageQuality"])
 	}
 }
-
 func createVehicle(plate, driver string, size models.VehicleSize, handicap bool) *models.Car {
 	car := models.NewCar(plate, driver)
 	car.SetVehicleSize(size)
