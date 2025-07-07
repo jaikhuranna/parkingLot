@@ -787,3 +787,146 @@ func (ps *PoliceService) GetVehicleCountByTimeWindow(minutes int) map[string]int
 
 	return result
 }
+
+// UC16: Find handicap cars in specific rows
+func (ps *PoliceService) FindHandicapCarsInRows(rows []string) ([]*VehicleInvestigationInfo, error) {
+	var handicapCars []*VehicleInvestigationInfo
+
+	for _, lot := range ps.parkingService.lots {
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil && space.ParkedCar.IsHandicap {
+				spaceRow := space.GetRowAssignment()
+				
+				// Check if this space is in one of the requested rows
+				for _, targetRow := range rows {
+					if strings.ToUpper(spaceRow) == strings.ToUpper(targetRow) {
+						info := &VehicleInvestigationInfo{
+							Car:      space.ParkedCar,
+							LotID:    lot.ID,
+							SpaceID:  fmt.Sprintf("%d", space.ID),
+							ParkedAt: space.ParkedAt,
+						}
+
+						if ticket, err := ps.parkingService.GetActiveTicket(space.ParkedCar.LicensePlate); err == nil {
+							info.AttendantID = ticket.AttendantID
+							if attendant := ps.parkingService.FindAttendantByID(ticket.AttendantID); attendant != nil {
+								info.AttendantName = attendant.Name
+							}
+						}
+
+						handicapCars = append(handicapCars, info)
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return handicapCars, nil
+}
+
+// UC16: Get vehicles by location criteria (size, handicap status, rows)
+func (ps *PoliceService) GetVehiclesByLocationCriteria(size models.VehicleSize, handicapOnly bool, rows []string) ([]*VehicleInvestigationInfo, error) {
+	var matchingVehicles []*VehicleInvestigationInfo
+
+	for _, lot := range ps.parkingService.lots {
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil {
+				car := space.ParkedCar
+				
+				// Check criteria
+				sizeMatch := (size == models.SmallVehicle && car.Size == models.SmallVehicle) ||
+					(size == models.MediumVehicle && car.Size == models.MediumVehicle) ||
+					(size == models.LargeVehicle && car.Size == models.LargeVehicle)
+				
+				handicapMatch := !handicapOnly || car.IsHandicap
+				
+				spaceRow := space.GetRowAssignment()
+				rowMatch := len(rows) == 0
+				for _, targetRow := range rows {
+					if strings.ToUpper(spaceRow) == strings.ToUpper(targetRow) {
+						rowMatch = true
+						break
+					}
+				}
+
+				if sizeMatch && handicapMatch && rowMatch {
+					info := &VehicleInvestigationInfo{
+						Car:      car,
+						LotID:    lot.ID,
+						SpaceID:  fmt.Sprintf("%d", space.ID),
+						ParkedAt: space.ParkedAt,
+					}
+
+					if ticket, err := ps.parkingService.GetActiveTicket(car.LicensePlate); err == nil {
+						info.AttendantID = ticket.AttendantID
+						if attendant := ps.parkingService.FindAttendantByID(ticket.AttendantID); attendant != nil {
+							info.AttendantName = attendant.Name
+						}
+					}
+
+					matchingVehicles = append(matchingVehicles, info)
+				}
+			}
+		}
+	}
+
+	return matchingVehicles, nil
+}
+
+// UC16: Validate handicap permit fraud
+func (ps *PoliceService) ValidateHandicapPermitFraud() map[string]interface{} {
+	validation := make(map[string]interface{})
+
+	// Find all handicap cars
+	var allHandicapCars []*VehicleInvestigationInfo
+	for _, lot := range ps.parkingService.lots {
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil && space.ParkedCar.IsHandicap {
+				info := &VehicleInvestigationInfo{
+					Car:      space.ParkedCar,
+					LotID:    lot.ID,
+					SpaceID:  fmt.Sprintf("%d", space.ID),
+					ParkedAt: space.ParkedAt,
+				}
+
+				if ticket, err := ps.parkingService.GetActiveTicket(space.ParkedCar.LicensePlate); err == nil {
+					info.AttendantID = ticket.AttendantID
+					if attendant := ps.parkingService.FindAttendantByID(ticket.AttendantID); attendant != nil {
+						info.AttendantName = attendant.Name
+					}
+				}
+
+				allHandicapCars = append(allHandicapCars, info)
+			}
+		}
+	}
+
+	// Find handicap cars in suspicious rows (B and D)
+	suspiciousRows, _ := ps.FindHandicapCarsInRows([]string{"B", "D"})
+
+	validation["totalHandicapVehicles"] = len(allHandicapCars)
+	validation["vehiclesInRowsB_D"] = len(suspiciousRows)
+	validation["fraudRisk"] = func() string {
+		if len(allHandicapCars) == 0 {
+			return "No Assessment - No handicap vehicles found"
+		}
+		
+		percentage := float64(len(suspiciousRows)) / float64(len(allHandicapCars)) * 100
+		
+		if percentage > 50 {
+			return "High Risk - Majority of handicap vehicles in target rows"
+		} else if percentage > 25 {
+			return "Medium Risk - Significant number in target rows"
+		} else if percentage > 0 {
+			return "Low Risk - Some vehicles in target rows require verification"
+		} else {
+			return "No Risk - No handicap vehicles in suspicious rows"
+		}
+	}()
+
+	validation["investigationRequired"] = len(suspiciousRows) > 0
+	validation["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
+
+	return validation
+}

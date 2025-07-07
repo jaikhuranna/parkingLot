@@ -50,3 +50,28 @@ func (ps *ParkingSpace) GetLocationDetails() map[string]interface{} {
 		"ParkedAt": ps.ParkedAt,
 	}
 }
+
+// UC16: Get row assignment based on space ID
+func (ps *ParkingSpace) GetRowAssignment() string {
+	// Map space IDs to rows (A, B, C, D)
+	// Simple mapping: spaces 1-25 = A, 26-50 = B, 51-75 = C, 76-100 = D
+	if ps.ID <= 25 {
+		return "A"
+	} else if ps.ID <= 50 {
+		return "B"
+	} else if ps.ID <= 75 {
+		return "C"
+	} else {
+		return "D"
+	}
+}
+
+// UC16: Get detailed location info including row
+func (ps *ParkingSpace) GetDetailedLocationInfo() map[string]interface{} {
+	return map[string]interface{}{
+		"SpaceID":  ps.ID,
+		"Row":      ps.GetRowAssignment(),
+		"ParkedAt": ps.ParkedAt,
+		"IsOccupied": ps.IsOccupied,
+	}
+}
