@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 	"parking-lot-system/interfaces"
 	"parking-lot-system/models"
 	"parking-lot-system/services"
@@ -9,18 +10,15 @@ import (
 
 func main() {
 	fmt.Println("Welcome to Parking Lot System!")
-	fmt.Println("UC14: BMW Car Tracking for Suspicious Activity")
-	fmt.Println("==============================================")
+	fmt.Println("UC15-UC16: Time-based Queries and Location-based Searches")
+	fmt.Println("========================================================")
 
 	// Create parking lots
-	lot1 := models.NewParkingLot("LOT1", 4)
-	lot2 := models.NewParkingLot("LOT2", 6)
-	lot3 := models.NewParkingLot("LOT3", 8)
-
+	lot1 := models.NewParkingLot("LOT1", 100)
+	lot2 := models.NewParkingLot("LOT2", 100)
 	service := services.NewParkingService()
 	service.AddLot(lot1)
 	service.AddLot(lot2)
-	service.AddLot(lot3)
 
 	// Add attendants
 	attendant := models.NewParkingAttendant("ATT001", "Alice Johnson", "LOT1")
@@ -30,103 +28,183 @@ func main() {
 	owner := interfaces.NewOwnerObserver("Sanjay")
 	service.AddObserverToLot("LOT1", owner)
 	service.AddObserverToLot("LOT2", owner)
-	service.AddObserverToLot("LOT3", owner)
 
 	// Create police service
 	policeService := services.NewPoliceService(service)
 
-	// UC14: BMW Security Monitoring Demo
-	fmt.Println("\n🚗 UC14: BMW Security Monitoring Features")
-	
-	// Add some test BMW cars
-	bmwCars := []*models.Car{
+	// UC15-UC16 Demo: Add test vehicles with specific timing and locations
+	fmt.Println("\n🚗 Setting up test scenario for UC15 & UC16...")
+
+	// Recent vehicles for UC15 testing
+	recentCars := []*models.Car{
 		func() *models.Car {
-			car := models.NewCar("BMW001", "Alice Johnson")
-			car.SetColor("Black")
-			car.SetMake("BMW")
-			car.SetVehicleSize(models.LargeVehicle)
+			car := models.NewCar("RECENT001", "John Smith")
+			car.SetColor("Red")
+			car.SetMake("Honda")
 			return car
 		}(),
 		func() *models.Car {
-			car := models.NewCar("BMW_X5", "Bob Smith")
-			car.SetColor("White")
-			car.SetMake("BMW")
-			car.SetVehicleSize(models.LargeVehicle)
-			car.SetHandicapStatus(true)
-			return car
-		}(),
-		func() *models.Car {
-			car := models.NewCar("BMW_M3", "Charlie Brown")
+			car := models.NewCar("RECENT002", "Jane Doe")
 			car.SetColor("Blue")
-			car.SetMake("BMW")
-			car.SetVehicleSize(models.MediumVehicle)
+			car.SetMake("Toyota")
 			return car
 		}(),
 	}
-	
-	// Park BMW cars
-	fmt.Println("\n📍 Parking BMW vehicles for security monitoring...")
-	for _, car := range bmwCars {
+
+	// Handicap vehicles for UC16 testing (placed in specific rows)
+	handicapCars := []*models.Car{
+		func() *models.Car {
+			car := models.NewCar("HANDICAP_B1", "Handicap Driver B1")
+			car.SetHandicapStatus(true)
+			car.SetVehicleSize(models.SmallVehicle)
+			car.SetColor("White")
+			return car
+		}(),
+		func() *models.Car {
+			car := models.NewCar("HANDICAP_D1", "Handicap Driver D1")
+			car.SetHandicapStatus(true)
+			car.SetVehicleSize(models.SmallVehicle)
+			car.SetColor("Silver")
+			return car
+		}(),
+		func() *models.Car {
+			car := models.NewCar("HANDICAP_A1", "Legitimate Handicap")
+			car.SetHandicapStatus(true)
+			car.SetVehicleSize(models.MediumVehicle)
+			car.SetColor("Black")
+			return car
+		}(),
+	}
+
+	// Park recent cars
+	fmt.Println("\n📍 Parking recent vehicles...")
+	for i, car := range recentCars {
 		_, err := service.ParkCarWithTicket(car)
 		if err != nil {
 			fmt.Printf("Warning: Could not park %s: %v\n", car.LicensePlate, err)
 		} else {
-			fmt.Printf("✅ Parked BMW %s (%s %s)\n", car.LicensePlate, car.Color, car.Make)
+			fmt.Printf("✅ Parked recent car %d: %s\n", i+1, car.LicensePlate)
 		}
+		time.Sleep(100 * time.Millisecond) // Small delay between parking
 	}
+
+	// Park handicap cars in specific spaces to control row assignment
+	fmt.Println("\n📍 Parking handicap vehicles in specific rows...")
 	
-	// UC14: Find BMW cars for security monitoring
-	fmt.Println("\n🔍 UC14: BMW Security Monitoring - Enhanced surveillance...")
-	bmwVehicles, err := policeService.FindBMWCars()
+	// Park in Row B (spaces 26-50)
+	lot1.Spaces[30].Park(handicapCars[0]) // Space 31 = Row B
+	fmt.Printf("✅ Parked %s in Row B (Space 31)\n", handicapCars[0].LicensePlate)
+	
+	// Park in Row D (spaces 76-100)
+	lot1.Spaces[80].Park(handicapCars[1]) // Space 81 = Row D
+	fmt.Printf("✅ Parked %s in Row D (Space 81)\n", handicapCars[1].LicensePlate)
+	
+	// Park in Row A (spaces 1-25) - legitimate location
+	lot1.Spaces[10].Park(handicapCars[2]) // Space 11 = Row A
+	fmt.Printf("✅ Parked %s in Row A (Space 11)\n", handicapCars[2].LicensePlate)
+
+	// UC15 Demo: Time-based parking queries
+	fmt.Println("\n🔍 UC15: Time-based Parking Queries Demo")
+	fmt.Println("==========================================")
+
+	// Find cars parked in last 30 minutes
+	recentVehicles, err := policeService.FindCarsParkedInLastMinutes(30)
 	if err != nil {
-		fmt.Printf("❌ Error finding BMW vehicles: %v\n", err)
+		fmt.Printf("❌ Error finding recent vehicles: %v\n", err)
 	} else {
-		fmt.Printf("🚨 Found %d BMW vehicles requiring enhanced security:\n", len(bmwVehicles))
-		for i, vehicle := range bmwVehicles {
+		fmt.Printf("🚨 Found %d vehicles parked in last 30 minutes:\n", len(recentVehicles))
+		for i, vehicle := range recentVehicles {
 			fmt.Printf("   %d. %s (%s %s) - Lot: %s, Space: %s\n", 
 				      i+1, vehicle.Car.LicensePlate, vehicle.Car.Color, 
 				      vehicle.Car.Make, vehicle.LotID, vehicle.SpaceID)
-			if vehicle.AttendantName != "" {
-				fmt.Printf("      👮 Attendant: %s (ID: %s)\n", vehicle.AttendantName, vehicle.AttendantID)
-			}
-			if vehicle.Car.IsHandicap {
-				fmt.Printf("      ♿ Special Status: Handicap Vehicle\n")
-			}
 		}
 	}
-	
-	// UC14: Generate BMW security monitoring report
-	fmt.Println("\n📋 UC14: BMW Security Monitoring Report:")
-	bmwReport := policeService.GenerateBMWSecurityReport()
-	fmt.Print(bmwReport)
-	
-	// UC14: Security analytics
-	fmt.Println("\n📊 UC14: BMW Security Analytics:")
-	bmwCount := policeService.GetBMWCount()
-	fmt.Printf("Total BMW vehicles: %d\n", bmwCount)
-	
-	priorities := policeService.GetBMWVehiclesByPriority()
-	if errMsg, hasError := priorities["error"]; hasError {
-		fmt.Printf("❌ Priority analysis error: %v\n", errMsg)
+
+	// Generate time-based investigation report
+	fmt.Println("\n📋 UC15: Time-based Investigation Report:")
+	timeReport := policeService.GenerateTimeBasedInvestigationReport(30)
+	fmt.Print(timeReport)
+
+	// UC15: Vehicle count by time window
+	fmt.Println("\n📊 UC15: Vehicle Count Analysis:")
+	counts := policeService.GetVehicleCountByTimeWindow(30)
+	if errMsg, hasError := counts["error"]; hasError {
+		fmt.Printf("❌ Count analysis error: %v\n", errMsg)
 	} else {
-		fmt.Printf("Security Level: %v\n", priorities["securityLevel"])
-		fmt.Printf("Enhanced Security Required: %v\n", priorities["requiresEnhancedSecurity"])
-		fmt.Printf("High Priority BMW vehicles: %v\n", priorities["highPriority"])
-		fmt.Printf("Medium Priority BMW vehicles: %v\n", priorities["mediumPriority"])
-		fmt.Printf("Low Priority BMW vehicles: %v\n", priorities["lowPriority"])
+		fmt.Printf("Time Window: %v\n", counts["timeWindow"])
+		fmt.Printf("Total Vehicles: %v\n", counts["totalVehicles"])
+		fmt.Printf("Last 15 minutes: %v\n", counts["last15Minutes"])
+		fmt.Printf("Last 30 minutes: %v\n", counts["last30Minutes"])
 	}
-	
-	// UC14: Security protocol validation
-	fmt.Println("\n🔒 UC14: Security Protocol Validation:")
-	validation := policeService.ValidateBMWSecurityProtocols()
-	if errMsg, hasError := validation["error"]; hasError {
-		fmt.Printf("❌ Validation error: %v\n", errMsg)
+
+	// UC16 Demo: Location-based vehicle searches
+	fmt.Println("\n🔍 UC16: Location-based Vehicle Searches Demo")
+	fmt.Println("==============================================")
+
+	// Find handicap cars in suspicious rows (B and D)
+	suspiciousHandicapCars, err := policeService.FindHandicapCarsInRows([]string{"B", "D"})
+	if err != nil {
+		fmt.Printf("❌ Error finding handicap cars in rows B/D: %v\n", err)
 	} else {
-		fmt.Printf("Security Protocol Status: %v\n", validation["securityProtocolActive"])
-		fmt.Printf("Attendant Coverage: %v/%v BMW vehicles\n", 
-			  validation["attendantCoverage"], validation["totalBMWVehicles"])
-		fmt.Printf("Coverage Quality: %v\n", validation["coverageQuality"])
+		fmt.Printf("🚨 Found %d handicap vehicles in suspicious rows B/D:\n", len(suspiciousHandicapCars))
+		for i, vehicle := range suspiciousHandicapCars {
+			fmt.Printf("   %d. %s (%s) - Lot: %s, Space: %s\n", 
+				      i+1, vehicle.Car.LicensePlate, vehicle.Car.DriverName,
+				      vehicle.LotID, vehicle.SpaceID)
+		}
 	}
+
+	// Generate handicap fraud investigation report
+	fmt.Println("\n📋 UC16: Handicap Fraud Investigation Report:")
+	fraudReport := policeService.GenerateHandicapFraudInvestigationReport()
+	fmt.Print(fraudReport)
+
+	// UC16: Validate handicap permit fraud
+	fmt.Println("\n🔒 UC16: Handicap Permit Fraud Validation:")
+	validation := policeService.ValidateHandicapPermitFraud()
+	fmt.Printf("Total Handicap Vehicles: %v\n", validation["totalHandicapVehicles"])
+	fmt.Printf("Vehicles in Rows B/D: %v\n", validation["vehiclesInRowsB_D"])
+	fmt.Printf("Fraud Risk Assessment: %v\n", validation["fraudRisk"])
+	fmt.Printf("Investigation Required: %v\n", validation["investigationRequired"])
+
+	// UC16: Location statistics
+	fmt.Println("\n📊 UC16: Parking Location Statistics:")
+	stats := policeService.GetLocationStatistics()
+	rowCounts := stats["totalVehiclesByRow"].(map[string]int)
+	handicapCounts := stats["handicapVehiclesByRow"].(map[string]int)
+
+	fmt.Println("Vehicles by Row:")
+	for row := 'A'; row <= 'D'; row++ {
+		rowStr := string(row)
+		fmt.Printf("   Row %s: %d total, %d handicap\n", 
+			  rowStr, rowCounts[rowStr], handicapCounts[rowStr])
+	}
+
+	// Combined UC15-UC16 Analysis
+	fmt.Println("\n🔍 Combined UC15-UC16 Security Analysis")
+	fmt.Println("======================================")
+
+	// Find small handicap cars in suspicious rows that were parked recently
+	smallHandicapInBD, err := policeService.GetVehiclesByLocationCriteria(
+		models.SmallVehicle, true, []string{"B", "D"})
+	if err != nil {
+		fmt.Printf("❌ Error in combined analysis: %v\n", err)
+	} else {
+		fmt.Printf("🚨 Small handicap vehicles in rows B/D: %d\n", len(smallHandicapInBD))
+		for i, vehicle := range smallHandicapInBD {
+			timeSinceParked := time.Since(vehicle.ParkedAt)
+			fmt.Printf("   %d. %s - Parked %.0f minutes ago\n", 
+				      i+1, vehicle.Car.LicensePlate, timeSinceParked.Minutes())
+		}
+	}
+
+	fmt.Println("\n🎉 UC15 & UC16 Implementation Complete!")
+	fmt.Println("======================================")
+	fmt.Println("✅ Time-based parking queries operational")
+	fmt.Println("✅ Location-based vehicle searches operational")
+	fmt.Println("✅ Handicap permit fraud detection active")
+	fmt.Println("✅ Row-based parking space mapping functional")
+	fmt.Println("✅ Integrated police investigation system ready")
 }
 func createVehicle(plate, driver string, size models.VehicleSize, handicap bool) *models.Car {
 	car := models.NewCar(plate, driver)
