@@ -930,3 +930,103 @@ func (ps *PoliceService) ValidateHandicapPermitFraud() map[string]interface{} {
 
 	return validation
 }
+
+// UC16: Generate handicap permit fraud investigation report
+func (ps *PoliceService) GenerateHandicapFraudInvestigationReport() string {
+	suspiciousVehicles, err := ps.FindHandicapCarsInRows([]string{"B", "D"})
+	if err != nil {
+		return "Error generating handicap fraud investigation report: " + err.Error()
+	}
+
+	report := "=== HANDICAP PERMIT FRAUD INVESTIGATION REPORT ===\n"
+	report += "Investigation Type: Handicap Permit Fraud\n"
+	report += "Target Locations: Rows B and D\n"
+	report += "Generated: " + time.Now().Format("2006-01-02 15:04:05") + "\n"
+	report += fmt.Sprintf("Suspicious Vehicles Found: %d\n\n", len(suspiciousVehicles))
+
+	for i, vehicle := range suspiciousVehicles {
+		row := ""
+		if space := ps.findParkingSpace(vehicle.LotID, vehicle.SpaceID); space != nil {
+			row = space.GetRowAssignment()
+		}
+
+		report += fmt.Sprintf("SUSPICIOUS VEHICLE %d:\n", i+1)
+		report += "  License Plate: " + vehicle.Car.LicensePlate + "\n"
+		report += "  Driver Name: " + vehicle.Car.DriverName + "\n"
+		report += "  Vehicle Size: " + vehicle.Car.GetVehicleSizeString() + "\n"
+		report += "  Location: Lot " + vehicle.LotID + ", Row " + row + ", Space " + vehicle.SpaceID + "\n"
+		report += "  Parked At: " + vehicle.ParkedAt.Format("2006-01-02 15:04:05") + "\n"
+
+		if vehicle.AttendantID != "" {
+			report += "  Parking Attendant: " + vehicle.AttendantName + " (ID: " + vehicle.AttendantID + ")\n"
+		}
+
+		report += "  Fraud Risk: HIGH - Handicap vehicle in suspicious row\n"
+		report += "\n"
+	}
+
+	if len(suspiciousVehicles) == 0 {
+		report += "NO SUSPICIOUS VEHICLES FOUND\n"
+		report += "Status: All handicap vehicles appear to be in legitimate locations\n"
+	} else {
+		report += "INVESTIGATION RECOMMENDATIONS:\n"
+		report += "1. Verify handicap permits for all identified vehicles\n"
+		report += "2. Interview parking attendants who processed these vehicles\n"
+		report += "3. Cross-reference permit numbers with official database\n"
+		report += "4. Review security footage for permit verification process\n"
+		report += "5. Conduct field verification of permit authenticity\n"
+	}
+
+	return report
+}
+
+// UC16: Helper method to find parking space by lot and space ID
+func (ps *PoliceService) findParkingSpace(lotID, spaceID string) *models.ParkingSpace {
+	for _, lot := range ps.parkingService.lots {
+		if lot.ID == lotID {
+			for _, space := range lot.Spaces {
+				if fmt.Sprintf("%d", space.ID) == spaceID {
+					return space
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// UC16: Get location statistics for analysis
+func (ps *PoliceService) GetLocationStatistics() map[string]interface{} {
+	stats := make(map[string]interface{})
+	
+	rowCounts := map[string]int{"A": 0, "B": 0, "C": 0, "D": 0}
+	handicapByRow := map[string]int{"A": 0, "B": 0, "C": 0, "D": 0}
+	sizeByRow := map[string]map[string]int{
+		"A": {"Small": 0, "Medium": 0, "Large": 0},
+		"B": {"Small": 0, "Medium": 0, "Large": 0},
+		"C": {"Small": 0, "Medium": 0, "Large": 0},
+		"D": {"Small": 0, "Medium": 0, "Large": 0},
+	}
+
+	for _, lot := range ps.parkingService.lots {
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil {
+				row := space.GetRowAssignment()
+				rowCounts[row]++
+
+				if space.ParkedCar.IsHandicap {
+					handicapByRow[row]++
+				}
+
+				sizeStr := space.ParkedCar.GetVehicleSizeString()
+				sizeByRow[row][sizeStr]++
+			}
+		}
+	}
+
+	stats["totalVehiclesByRow"] = rowCounts
+	stats["handicapVehiclesByRow"] = handicapByRow
+	stats["vehicleSizesByRow"] = sizeByRow
+	stats["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
+
+	return stats
+}
