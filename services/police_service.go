@@ -1030,3 +1030,301 @@ func (ps *PoliceService) GetLocationStatistics() map[string]interface{} {
 
 	return stats
 }
+
+// UC17: Get all cars parked in a specific parking lot
+func (ps *PoliceService) GetAllCarsInLot(lotID string) ([]*VehicleInvestigationInfo, error) {
+	var allCars []*VehicleInvestigationInfo
+
+	for _, lot := range ps.parkingService.lots {
+		if lot.ID == lotID {
+			for _, space := range lot.Spaces {
+				if space.IsOccupied && space.ParkedCar != nil {
+					info := &VehicleInvestigationInfo{
+						Car:      space.ParkedCar,
+						LotID:    lot.ID,
+						SpaceID:  fmt.Sprintf("%d", space.ID),
+						ParkedAt: space.ParkedAt,
+					}
+
+					if ticket, err := ps.parkingService.GetActiveTicket(space.ParkedCar.LicensePlate); err == nil {
+						info.AttendantID = ticket.AttendantID
+						if attendant := ps.parkingService.FindAttendantByID(ticket.AttendantID); attendant != nil {
+							info.AttendantName = attendant.Name
+						}
+					}
+
+					allCars = append(allCars, info)
+				}
+			}
+			return allCars, nil
+		}
+	}
+
+	return nil, fmt.Errorf("parking lot %s not found", lotID)
+}
+
+// UC17: Detect potentially fraudulent license plates
+func (ps *PoliceService) DetectFraudulentPlates() ([]*VehicleInvestigationInfo, error) {
+	var suspiciousVehicles []*VehicleInvestigationInfo
+
+	for _, lot := range ps.parkingService.lots {
+		for _, space := range lot.Spaces {
+			if space.IsOccupied && space.ParkedCar != nil {
+				car := space.ParkedCar
+				
+				// Check for suspicious patterns in license plates
+				if ps.isSuspiciousLicensePlate(car.LicensePlate) {
+					info := &VehicleInvestigationInfo{
+						Car:      car,
+						LotID:    lot.ID,
+						SpaceID:  fmt.Sprintf("%d", space.ID),
+						ParkedAt: space.ParkedAt,
+					}
+
+					if ticket, err := ps.parkingService.GetActiveTicket(car.LicensePlate); err == nil {
+						info.AttendantID = ticket.AttendantID
+						if attendant := ps.parkingService.FindAttendantByID(ticket.AttendantID); attendant != nil {
+							info.AttendantName = attendant.Name
+						}
+					}
+
+					suspiciousVehicles = append(suspiciousVehicles, info)
+				}
+			}
+		}
+	}
+
+	return suspiciousVehicles, nil
+}
+
+// UC17: Check if a license plate is potentially fraudulent
+func (ps *PoliceService) isSuspiciousLicensePlate(plate string) bool {
+	plate = strings.ToUpper(strings.TrimSpace(plate))
+	
+	// Check for suspicious patterns
+	patterns := []string{
+		"FAKE", "TEST", "TEMP", "XXXX", "0000", "1111", 
+		"FRAUD", "STOLEN", "NULL", "ADMIN", "DEBUG",
+	}
+	
+	for _, pattern := range patterns {
+		if strings.Contains(plate, pattern) {
+			return true
+		}
+	}
+	
+	// Check for excessive repetition (e.g., "AAA111", "BBB222")
+	if len(plate) >= 6 {
+		letters := 0
+		numbers := 0
+		for _, char := range plate {
+			if char >= 'A' && char <= 'Z' {
+				letters++
+			} else if char >= '0' && char <= '9' {
+				numbers++
+			}
+		}
+		
+		// Suspicious if all letters or all numbers
+		if letters == len(plate) || numbers == len(plate) {
+			return true
+		}
+	}
+	
+	// Check for sequential patterns
+	if ps.hasSequentialPattern(plate) {
+		return true
+	}
+	
+	return false
+}
+
+// UC17: Check for sequential patterns in license plates
+func (ps *PoliceService) hasSequentialPattern(plate string) bool {
+	if len(plate) < 3 {
+		return false
+	}
+	
+	consecutive := 0
+	for i := 1; i < len(plate); i++ {
+		if plate[i] == plate[i-1]+1 {
+			consecutive++
+			if consecutive >= 2 { // Three consecutive characters
+				return true
+			}
+		} else {
+			consecutive = 0
+		}
+	}
+	
+	return false
+}
+
+// UC17: Generate complete parking lot investigation report
+func (ps *PoliceService) GenerateCompleteLotInvestigationReport(lotID string) string {
+	allCars, err := ps.GetAllCarsInLot(lotID)
+	if err != nil {
+		return "Error generating complete lot investigation report: " + err.Error()
+	}
+
+	fraudulentCars, _ := ps.DetectFraudulentPlates()
+	
+	// Filter fraudulent cars for this lot
+	var lotFraudulentCars []*VehicleInvestigationInfo
+	for _, car := range fraudulentCars {
+		if car.LotID == lotID {
+			lotFraudulentCars = append(lotFraudulentCars, car)
+		}
+	}
+
+	report := "=== COMPLETE PARKING LOT INVESTIGATION REPORT ===\n"
+	report += "Investigation Type: Complete Lot Analysis\n"
+	report += "Target Lot: " + lotID + "\n"
+	report += "Investigation Focus: Fraudulent License Plates\n"
+	report += "Generated: " + time.Now().Format("2006-01-02 15:04:05") + "\n"
+	report += fmt.Sprintf("Total Vehicles in Lot: %d\n", len(allCars))
+	report += fmt.Sprintf("Suspicious Vehicles Found: %d\n\n", len(lotFraudulentCars))
+
+	// All vehicles section
+	report += "=== ALL VEHICLES IN LOT " + lotID + " ===\n"
+	for i, vehicle := range allCars {
+		report += fmt.Sprintf("VEHICLE %d:\n", i+1)
+		report += "  License Plate: " + vehicle.Car.LicensePlate + "\n"
+		report += "  Driver Name: " + vehicle.Car.DriverName + "\n"
+		report += "  Color: " + vehicle.Car.Color + "\n"
+		report += "  Make: " + vehicle.Car.Make + "\n"
+		report += "  Vehicle Size: " + vehicle.Car.GetVehicleSizeString() + "\n"
+		report += "  Space: " + vehicle.SpaceID + "\n"
+		report += "  Parked At: " + vehicle.ParkedAt.Format("2006-01-02 15:04:05") + "\n"
+
+		if vehicle.AttendantID != "" {
+			report += "  Parking Attendant: " + vehicle.AttendantName + " (ID: " + vehicle.AttendantID + ")\n"
+		}
+
+		if vehicle.Car.IsHandicap {
+			report += "  Special Status: Handicap Vehicle\n"
+		}
+
+		// Check if this vehicle is suspicious
+		isSuspicious := false
+		for _, suspicious := range lotFraudulentCars {
+			if suspicious.Car.LicensePlate == vehicle.Car.LicensePlate {
+				isSuspicious = true
+				break
+			}
+		}
+
+		if isSuspicious {
+			report += "  ⚠️  FRAUD ALERT: Suspicious license plate detected\n"
+		} else {
+			report += "  Status: Normal\n"
+		}
+
+		report += "\n"
+	}
+
+	// Fraudulent vehicles section
+	if len(lotFraudulentCars) > 0 {
+		report += "=== FRAUDULENT VEHICLES INVESTIGATION ===\n"
+		for i, vehicle := range lotFraudulentCars {
+			report += fmt.Sprintf("SUSPICIOUS VEHICLE %d:\n", i+1)
+			report += "  License Plate: " + vehicle.Car.LicensePlate + " ⚠️ FLAGGED\n"
+			report += "  Driver Name: " + vehicle.Car.DriverName + "\n"
+			report += "  Location: Space " + vehicle.SpaceID + "\n"
+			report += "  Parked At: " + vehicle.ParkedAt.Format("2006-01-02 15:04:05") + "\n"
+
+			if vehicle.AttendantID != "" {
+				report += "  Attendant: " + vehicle.AttendantName + " (ID: " + vehicle.AttendantID + ")\n"
+			}
+
+			report += "  Fraud Risk: HIGH - Requires immediate verification\n"
+			report += "\n"
+		}
+
+		report += "IMMEDIATE ACTIONS REQUIRED:\n"
+		report += "1. Verify identity of all flagged drivers\n"
+		report += "2. Cross-reference license plates with national database\n"
+		report += "3. Interview parking attendants who processed these vehicles\n"
+		report += "4. Review security footage for parking time periods\n"
+		report += "5. Contact DMV for license plate authenticity verification\n"
+		report += "6. Prepare evidence for potential legal proceedings\n"
+	} else {
+		report += "=== FRAUD ANALYSIS RESULTS ===\n"
+		report += "✅ NO FRAUDULENT PLATES DETECTED\n"
+		report += "Status: All vehicles in lot appear legitimate\n"
+		report += "Recommendation: Continue routine monitoring\n"
+	}
+
+	return report
+}
+
+// UC17: Get fraud statistics for all lots
+func (ps *PoliceService) GetFraudStatistics() map[string]interface{} {
+	stats := make(map[string]interface{})
+
+	allFraudulent, err := ps.DetectFraudulentPlates()
+	if err != nil {
+		stats["error"] = err.Error()
+		return stats
+	}
+
+	stats["totalSuspiciousVehicles"] = len(allFraudulent)
+	stats["timestamp"] = time.Now().Format("2006-01-02 15:04:05")
+
+	// Group by lot
+	lotStats := make(map[string]int)
+	for _, vehicle := range allFraudulent {
+		lotStats[vehicle.LotID]++
+	}
+
+	stats["fraudByLot"] = lotStats
+
+	// Calculate fraud rate
+	totalVehicles := 0
+	for _, lot := range ps.parkingService.lots {
+		totalVehicles += lot.GetOccupiedSpaces()
+	}
+
+	if totalVehicles > 0 {
+		fraudRate := float64(len(allFraudulent)) / float64(totalVehicles) * 100
+		stats["fraudRate"] = fraudRate
+	} else {
+		stats["fraudRate"] = 0.0
+	}
+
+	return stats
+}
+
+// UC17: Get investigation summary for all implemented use cases
+func (ps *PoliceService) GetCompleteInvestigationSummary() map[string]interface{} {
+	summary := make(map[string]interface{})
+
+	// UC12: White cars (bomb threat)
+	whiteCars, _ := ps.FindWhiteCars()
+	summary["whiteCarsCount"] = len(whiteCars)
+
+	// UC13: Blue Toyotas (robbery)
+	blueToyotas, _ := ps.FindBlueToyotaCars()
+	summary["blueToyotasCount"] = len(blueToyotas)
+
+	// UC14: BMW cars (suspicious activity)
+	bmwCars, _ := ps.FindBMWCars()
+	summary["bmwCarsCount"] = len(bmwCars)
+
+	// UC15: Recent cars (bomb threat - time-based)
+	recentCars, _ := ps.FindCarsParkedInLastMinutes(30)
+	summary["recentCarsCount"] = len(recentCars)
+
+	// UC16: Handicap fraud (location-based)
+	handicapFraud, _ := ps.FindHandicapCarsInRows([]string{"B", "D"})
+	summary["handicapFraudCount"] = len(handicapFraud)
+
+	// UC17: Fraudulent plates (complete investigation)
+	fraudulentCars, _ := ps.DetectFraudulentPlates()
+	summary["fraudulentPlatesCount"] = len(fraudulentCars)
+
+	summary["investigationTimestamp"] = time.Now().Format("2006-01-02 15:04:05")
+	summary["totalInvestigationTypes"] = 6 // UC12-UC17
+
+	return summary
+}
